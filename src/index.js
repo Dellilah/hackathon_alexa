@@ -53,12 +53,30 @@ var newSessionHandlers = {
 
 var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
     'getUsersWithAbility': function () {
-      var ability = this.event.request.intent.slots.ability.value;
+      this.attributes['ability_name'] = this.event.request.intent.slots.ability.value;
+      var ability = this.attributes['ability_name'];
       var that = this;
-      getJSON(this, { ability_name: ability }).then(function (response) {
-        that.attributes['chosen_person_data'] = response[0].user;
-        var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
-        that.emit(':ask', output);
+      getJSON(this).then(function (response) {
+        if ( response.length > 0 ) {
+          that.attributes['chosen_person_data'] = response[0].user;
+          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+          that.emit(':ask', output);
+        } else {
+          that.emit(':tell', "I did't find any experts in "+ability+". Try to define the skill in a different way.");
+        }
+      });
+    },
+    'getNextUser': function () {
+      var ability = this.attributes['ability_name'];
+      var that = this;
+      getJSON(this).then(function (response) {
+        if ( response.length > 0 ) {
+          that.attributes['chosen_person_data'] = response[0].user;
+          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+          that.emit(':ask', output);
+        } else {
+          that.emit(':tell', "I did't find any other experts in "+ability+". Try to define the skill in a different way.");
+        }
       });
     },
     'AMAZON.YesIntent': function () {
@@ -67,8 +85,8 @@ var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
     },
     'AMAZON.NoIntent': function () {
         this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
-        output = HelpMessage;
-        this.emit(':ask', HelpMessage, HelpMessage);
+        output = "If you want me to find another person with the same skill, say 'next'. If you want to change the skill - say 'change skill for' and the name of the skill.";
+        this.emit(':ask', output, output);
     },
     'AMAZON.StopIntent': function () {
         this.emit(':tell', goodbyeMessage);
@@ -97,12 +115,12 @@ exports.handler = function (event, context, callback) {
     alexa.execute();
 };
 
-function getJSON(that, params) {
+function getJSON(that) {
 
     var options = {
         uri: "https://hidden-beach-26730.herokuapp.com/api/with_ability.json",
         qs: {
-            ability_name: params.ability_name,
+            ability_name: that.attributes['ability_name'],
             discarded_ids: that.attributes['discarded_ids']
         },
         json: true
