@@ -25,6 +25,7 @@ var alexa;
 
 var newSessionHandlers = {
     'LaunchRequest': function () {
+        this.attributes['current_user_id'] = 4;
         this.attributes['discarded_ids'] = [];
         this.handler.state = states.CHOOSE_ABILITY;
         output = welcomeMessage;
@@ -80,8 +81,11 @@ var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
       });
     },
     'AMAZON.YesIntent': function () {
-        output = "That's perfect! Meeting with "+this.attributes['chosen_person_data'].first_name;
-        this.emit(':tell', output);
+        var that = this;
+        postJSON(this).then(function (response) {
+          output = "That's perfect! Meeting with "+that.attributes['chosen_person_data'].first_name;
+          that.emit(':tell', output);
+        });
     },
     'AMAZON.NoIntent': function () {
         this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
@@ -124,6 +128,21 @@ function getJSON(that) {
             discarded_ids: that.attributes['discarded_ids']
         },
         json: true
+    };
+
+    return rq(options);
+}
+
+function postJSON(that) {
+
+    var options = {
+      method: 'POST',
+      uri: "https://hidden-beach-26730.herokuapp.com/api/set_meeting",
+      body: {
+          invitor_id: that.attributes['current_user_id'],
+          invited_id: that.attributes['chosen_person_data'].id,
+      },
+      json: true // Automatically stringifies the body to JSON
     };
 
     return rq(options);
