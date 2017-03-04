@@ -2,6 +2,9 @@
   "intents": [
     { "intent": "getUsersWithAbility", "slots": [{ "name": "ability", "type": "LIST_OF_ABILITIES" }]},
     { "intent": "getNextUser", "slots": []},
+    { "intent": "passToSearch", "slots": []},
+    { "intent": "confirmInvitation", "slots": []},
+    { "intent": "rejectInvitation", "slots": []},
     { "intent": "AMAZON.YesIntent", "slots": [] },
     { "intent": "AMAZON.NoIntent", "slots": [] },
     { "intent": "AMAZON.HelpIntent", "slots": [] },

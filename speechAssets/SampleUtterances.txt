@@ -7,3 +7,10 @@ getUsersWithAbility change skill for {ability}
 
 getNextUser next
 getNextUser another person
+
+passToSearch pass to looking for a lunch
+passToSearch pass
+
+rejectInvitation reject
+
+confirmInvitation confirm
