@@ -4,6 +4,7 @@ var request = require("request");
 var rq = require("request-promise");
 
 var states = {
+    CHECK_NOTIFICATION: '_CHECK_NOTIFICATION',
     CHOOSE_ABILITY: '_CHOOSE_ABILITY'
 };
 
@@ -25,11 +26,22 @@ var alexa;
 
 var newSessionHandlers = {
     'LaunchRequest': function () {
-        this.attributes['current_user_id'] = 4;
+        this.attributes['current_user_id'] = 1;
         this.attributes['discarded_ids'] = [];
-        this.handler.state = states.CHOOSE_ABILITY;
-        output = welcomeMessage;
-        this.emit(':ask', output, welcomeRepromt);
+        var that = this;
+        getNotificationsJSON(this).then(function (response) {
+          if ( response.length > 0 ) {
+            that.handler.state = states.CHECK_NOTIFICATION;
+            that.attributes['current_notification'] = 0;
+            that.attributes['unconfirmed_notifications'] = response;
+            output = "You've got some invitations waiting for your attention. Do you want to check them?";
+            that.emit(':ask', output, output);
+          } else {
+            that.handler.state = states.CHOOSE_ABILITY;
+            output = welcomeMessage;
+            that.emit(':ask', output, welcomeRepromt);
+          }
+        });
     },
     'getUsersWithAbility': function () {
         this.handler.state = states.CHOOSE_ABILITY;
@@ -113,9 +125,70 @@ var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
     }
 });
 
+var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, {
+    // 'getUsersWithAbility': function () {
+    //   this.attributes['ability_name'] = this.event.request.intent.slots.ability.value;
+    //   var ability = this.attributes['ability_name'];
+    //   var that = this;
+    //   getJSON(this).then(function (response) {
+    //     if ( response.length > 0 ) {
+    //       that.attributes['chosen_person_data'] = response[0].user;
+    //       var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+    //       that.emit(':ask', output);
+    //     } else {
+    //       that.emit(':tell', "I did't find any experts in "+ability+". Try to define the skill in a different way.");
+    //     }
+    //   });
+    // },
+    // 'getNextUser': function () {
+    //   var ability = this.attributes['ability_name'];
+    //   var that = this;
+    //   getJSON(this).then(function (response) {
+    //     if ( response.length > 0 ) {
+    //       that.attributes['chosen_person_data'] = response[0].user;
+    //       var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+    //       that.emit(':ask', output);
+    //     } else {
+    //       that.emit(':tell', "I did't find any other experts in "+ability+". Try to define the skill in a different way.");
+    //     }
+    //   });
+    // },
+    'AMAZON.YesIntent': function () {
+        var current_notification = this.attributes['unconfirmed_notifications'][this.attributes['current_notification']];
+        this.attributes['current_notification'] = this.attributes['current_notification'] + 1;
+        var output = "Invitation from "+ current_notification.meeting.user.first_name + ". Confirm, reject, next invitation, or pass to looking for a lunch?";
+        this.emit(':ask', output);
+    },
+    'AMAZON.NoIntent': function () {
+        this.handler.state = states.CHOOSE_ABILITY;
+        output = welcomeMessage;
+        this.emit(':ask', output, output);
+    },
+    'AMAZON.StopIntent': function () {
+        this.emit(':tell', goodbyeMessage);
+    },
+    'AMAZON.HelpIntent': function () {
+        output = HelpMessage;
+        this.emit(':ask', output, HelpMessage);
+    },
+    'AMAZON.CancelIntent': function () {
+        // Use this function to clear up and save any data needed between sessions
+        this.emit(":tell", goodbyeMessage);
+    },
+    'SessionEndedRequest': function () {
+        // Use this function to clear up and save any data needed between sessions
+        this.emit('AMAZON.StopIntent');
+    },
+    'Unhandled': function () {
+        output = HelpMessage;
+        this.emit(':ask', output, welcomeRepromt);
+    }
+});
+
+
 exports.handler = function (event, context, callback) {
     alexa = Alexa.handler(event, context);
-    alexa.registerHandlers(newSessionHandlers, startGetUsersHandlers);
+    alexa.registerHandlers(newSessionHandlers, startGetUsersHandlers, notificationsHandlers);
     alexa.execute();
 };
 
@@ -126,6 +199,19 @@ function getJSON(that) {
         qs: {
             ability_name: that.attributes['ability_name'],
             discarded_ids: that.attributes['discarded_ids']
+        },
+        json: true
+    };
+
+    return rq(options);
+}
+
+function getNotificationsJSON(that) {
+
+    var options = {
+        uri: "https://hidden-beach-26730.herokuapp.com/api/waiting_for_confirmation.json",
+        qs: {
+            current_user_id: that.attributes['current_user_id']
         },
         json: true
     };
