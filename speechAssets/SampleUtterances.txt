@@ -1,0 +1,5 @@
+find an expert in {{skill}}
+find someone who is an expert in {{skill}}
+arrange lunch with someone who knows {{skill}}
+I want to meet a person who has knowledge about {{skill}}
+I'm looking for someone who is best in {{skill}}
