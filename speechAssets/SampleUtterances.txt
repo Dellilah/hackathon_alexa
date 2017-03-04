@@ -1,5 +1,5 @@
-find an expert in {{skill}}
-find someone who is an expert in {{skill}}
-arrange lunch with someone who knows {{skill}}
-I want to meet a person who has knowledge about {{skill}}
-I'm looking for someone who is best in {{skill}}
+getUsersWithAbility find an expert in {ability}
+getUsersWithAbility find someone who is an expert in {ability}
+getUsersWithAbility arrange lunch with someone who knows {ability}
+getUsersWithAbility I want to meet a person who has knowledge about {ability}
+getUsersWithAbility I'm looking for someone who is best in {ability}

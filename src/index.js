@@ -54,17 +54,19 @@ var newSessionHandlers = {
 var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
     'getUsersWithAbility': function () {
       var ability = this.event.request.intent.slots.ability.value;
+      var that = this;
       getJSON(this, { ability_name: ability }).then(function (response) {
-        this.attributes['chosen_person_data'] = response.entities[0];
-        var output = "I've found "+ this.attributes['chosen_person_data'].first_name + " " + this.attributes['chosen_person_data'].last_name+", do you like my choice?";
-        this.emit(':ask', output);
+        that.attributes['chosen_person_data'] = response[0].user;
+        var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+        that.emit(':ask', output);
       });
     },
     'AMAZON.YesIntent': function () {
-        output = "That's perfect! Meeting with "+this.attributes['chosen_person_data'].first_name + " " + this.attributes['chosen_person_data'].last_name;
+        output = "That's perfect! Meeting with "+this.attributes['chosen_person_data'].first_name;
         this.emit(':tell', output);
     },
     'AMAZON.NoIntent': function () {
+        this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
         output = HelpMessage;
         this.emit(':ask', HelpMessage, HelpMessage);
     },
@@ -98,9 +100,10 @@ exports.handler = function (event, context, callback) {
 function getJSON(that, params) {
 
     var options = {
-        uri: "https://hidden-beach-26730.herokuapp.com/",
+        uri: "https://hidden-beach-26730.herokuapp.com/api/with_ability.json",
         qs: {
-            ability_name: params.ability_name
+            ability_name: params.ability_name,
+            discarded_ids: that.attributes['discarded_ids']
         },
         json: true
     };

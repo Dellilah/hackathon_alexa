@@ -1,6 +1,6 @@
 {
   "intents": [
-    { "intent": "getUsersWithAbility", "slots": [{ "name": "ability" }] },
+    { "intent": "getUsersWithAbility", "slots": [{ "name": "ability", "type": "LIST_OF_ABILITIES" }]},
     { "intent": "AMAZON.YesIntent", "slots": [] },
     { "intent": "AMAZON.NoIntent", "slots": [] },
     { "intent": "AMAZON.HelpIntent", "slots": [] },
