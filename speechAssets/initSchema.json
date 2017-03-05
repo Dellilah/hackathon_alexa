@@ -5,6 +5,7 @@
     { "intent": "passToSearch", "slots": []},
     { "intent": "confirmInvitation", "slots": []},
     { "intent": "rejectInvitation", "slots": []},
+    { "intent": "getLunchDateTime", "slots": [{ "name": "date", "type": "AMAZON.DATE"}, { "name": "time", "type": "AMAZON.TIME"}] },
     { "intent": "AMAZON.YesIntent", "slots": [] },
     { "intent": "AMAZON.NoIntent", "slots": [] },
     { "intent": "AMAZON.HelpIntent", "slots": [] },

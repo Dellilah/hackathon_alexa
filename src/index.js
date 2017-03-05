@@ -2,10 +2,12 @@
 var Alexa = require('alexa-sdk');
 var request = require("request");
 var rq = require("request-promise");
+var dateFormat = require('dateformat');
 
 var states = {
     CHECK_NOTIFICATION: '_CHECK_NOTIFICATION',
-    CHOOSE_ABILITY: '_CHOOSE_ABILITY'
+    CHOOSE_ABILITY: '_CHOOSE_ABILITY',
+    CHOOSE_DATETIME: '_CHOOSE_DATETIME',
 };
 
 var welcomeMessage = "Welcome in Lunch App. You're looking for a person with what skill?";
@@ -71,9 +73,10 @@ var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
       var that = this;
       getJSON(this).then(function (response) {
         if ( response.length > 0 ) {
-          that.attributes['chosen_person_data'] = response[0].user;
-          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
-          that.emit(':ask', output);
+          that.attributes['chosen_people'] = response;
+          that.handler.state = states.CHOOSE_DATETIME;
+          // var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+          that.emit(':ask', "When would you like to have a lunch?");
         } else {
           that.emit(':tell', "I did't find any experts in "+ability+". Try to define the skill in a different way.");
         }
@@ -124,6 +127,77 @@ var startGetUsersHandlers = Alexa.CreateStateHandler(states.CHOOSE_ABILITY, {
         this.emit(':ask', output, welcomeRepromt);
     }
 });
+
+var setDateTimeMeetingHandlers = Alexa.CreateStateHandler(states.CHOOSE_DATETIME, {
+    'getLunchDateTime': function () {
+      this.attributes['date'] = new Date(this.event.request.intent.slots.date.value);
+      this.attributes['time'] = this.event.request.intent.slots.time.value;
+      this.attributes['day_number'] = this.attributes['date'].getDay();
+
+      var that = this;
+      getUsersDeadlineJSON(this).then(function (response) {
+        if ( response.length > 0 ) {
+          that.attributes['chosen_person_data'] = response[0].user;
+          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+          that.emit(':ask', output);
+        } else {
+          that.emit(':tell', "I did't find any experts for this datetime.");
+        }
+      });
+    },
+    'getNextUser': function () {
+      var ability = this.attributes['ability_name'];
+      var that = this;
+      getJSON(this).then(function (response) {
+        if ( response.length > 0 ) {
+          that.attributes['chosen_person_data'] = response[0].user;
+          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+          that.emit(':ask', output);
+        } else {
+          that.emit(':tell', "I did't find any other experts in "+ability+". Try to define the skill in a different way.");
+        }
+      });
+    },
+    'AMAZON.YesIntent': function () {
+        var that = this;
+        getRestaurantsNearbyJSON(this).then(function (response) {
+          if ( response.results.length > 0 ) {
+            var restaurant = response.results[0].name;
+            var display_date = dateFormat(that.attributes['date'], "dddd, mmmm dS");
+            var temp = new Date (new Date().toDateString() + ' ' + that.attributes['time']);
+            var display_time = dateFormat(temp, "shortTime");
+            that.emit(':ask', "Meeting with "+that.attributes['chosen_person_data'].first_name+" on "+display_date+" at "+display_time+" in "+restaurant+". Is that OK?");
+          } else {
+            that.emit(':tell', "I did't find any restaurants.");
+          }
+        });
+    },
+    'AMAZON.NoIntent': function () {
+        this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
+        output = "If you want me to find another person with the same skill, say 'next'. If you want to change the skill - say 'change skill for' and the name of the skill.";
+        this.emit(':ask', output, output);
+    },
+    'AMAZON.StopIntent': function () {
+        this.emit(':tell', goodbyeMessage);
+    },
+    'AMAZON.HelpIntent': function () {
+        output = HelpMessage;
+        this.emit(':ask', output, HelpMessage);
+    },
+    'AMAZON.CancelIntent': function () {
+        // Use this function to clear up and save any data needed between sessions
+        this.emit(":tell", goodbyeMessage);
+    },
+    'SessionEndedRequest': function () {
+        // Use this function to clear up and save any data needed between sessions
+        this.emit('AMAZON.StopIntent');
+    },
+    'Unhandled': function () {
+        output = HelpMessage;
+        this.emit(':ask', output, welcomeRepromt);
+    }
+});
+
 
 var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, {
     'getNextUser': function () {
@@ -212,7 +286,7 @@ var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, 
 
 exports.handler = function (event, context, callback) {
     alexa = Alexa.handler(event, context);
-    alexa.registerHandlers(newSessionHandlers, startGetUsersHandlers, notificationsHandlers);
+    alexa.registerHandlers(newSessionHandlers, startGetUsersHandlers, notificationsHandlers, setDateTimeMeetingHandlers);
     alexa.execute();
 };
 
@@ -282,6 +356,38 @@ function postRejectInvitaionJSON(that) {
           meeting_id: that.attributes['unconfirmed_notifications'][that.attributes['current_notification']].meeting.id
       },
       json: true // Automatically stringifies the body to JSON
+    };
+
+    return rq(options);
+}
+
+function getUsersDeadlineJSON(that) {
+
+    var options = {
+        uri: "https://hidden-beach-26730.herokuapp.com/api/with_ability_and_datetime.json",
+        qs: {
+            ability_name: that.attributes['ability_name'],
+            discarded_ids: that.attributes['discarded_ids'],
+            current_user_id: that.attributes['current_user_id'],
+            day_number: that.attributes['day_number'],
+            time: that.attributes['time'],
+        },
+        json: true
+    };
+
+    return rq(options);
+}
+
+function getRestaurantsNearbyJSON(that) {
+  var options = {
+        uri: "https://maps.googleapis.com/maps/api/place/nearbysearch/json",
+        qs: {
+            location: that.attributes['chosen_person_data'].latitude+","+that.attributes['chosen_person_data'].longitude,
+            radius: 500,
+            type: 'restaurant',
+            key: 'AIzaSyAG7rci1mcpe_MPiatVAgPP9kk-VlIG6mc'
+        },
+        json: true
     };
 
     return rq(options);
