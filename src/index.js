@@ -222,7 +222,8 @@ function getJSON(that) {
         uri: "https://hidden-beach-26730.herokuapp.com/api/with_ability.json",
         qs: {
             ability_name: that.attributes['ability_name'],
-            discarded_ids: that.attributes['discarded_ids']
+            discarded_ids: that.attributes['discarded_ids'],
+            current_user_id: that.attributes['current_user_id'],
         },
         json: true
     };
