@@ -8,6 +8,7 @@ var states = {
     CHECK_NOTIFICATION: '_CHECK_NOTIFICATION',
     CHOOSE_ABILITY: '_CHOOSE_ABILITY',
     CHOOSE_DATETIME: '_CHOOSE_DATETIME',
+    ACCEPT_MEETING: '_ACCEPT_MEETING',
 };
 
 var welcomeMessage = "Welcome in Lunch App. You're looking for a person with what skill?";
@@ -162,14 +163,50 @@ var setDateTimeMeetingHandlers = Alexa.CreateStateHandler(states.CHOOSE_DATETIME
         var that = this;
         getRestaurantsNearbyJSON(this).then(function (response) {
           if ( response.results.length > 0 ) {
-            var restaurant = response.results[0].name;
+            that.attributes['restaurant'] = response.results[0];
+            var restaurant = that.attributes['restaurant'].name;
             var display_date = dateFormat(that.attributes['date'], "dddd, mmmm dS");
             var temp = new Date (new Date().toDateString() + ' ' + that.attributes['time']);
             var display_time = dateFormat(temp, "shortTime");
+            that.handler.state = states.ACCEPT_MEETING;
             that.emit(':ask', "Meeting with "+that.attributes['chosen_person_data'].first_name+" on "+display_date+" at "+display_time+" in "+restaurant+". Is that OK?");
           } else {
             that.emit(':tell', "I did't find any restaurants.");
           }
+        });
+    },
+    'AMAZON.NoIntent': function () {
+        this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
+        output = "If you want me to find another person with the same skill, say 'next'. If you want to change the skill - say 'change skill for' and the name of the skill.";
+        this.emit(':ask', output, output);
+    },
+    'AMAZON.StopIntent': function () {
+        this.emit(':tell', goodbyeMessage);
+    },
+    'AMAZON.HelpIntent': function () {
+        output = HelpMessage;
+        this.emit(':ask', output, HelpMessage);
+    },
+    'AMAZON.CancelIntent': function () {
+        // Use this function to clear up and save any data needed between sessions
+        this.emit(":tell", goodbyeMessage);
+    },
+    'SessionEndedRequest': function () {
+        // Use this function to clear up and save any data needed between sessions
+        this.emit('AMAZON.StopIntent');
+    },
+    'Unhandled': function () {
+        output = HelpMessage;
+        this.emit(':ask', output, welcomeRepromt);
+    }
+});
+
+var acceptMeetingHandlers = Alexa.CreateStateHandler(states.ACCEPT_MEETING, {
+    'AMAZON.YesIntent': function () {
+        var that = this;
+        postSetMeetingJSON(this).then(function (response) {
+          output = "That's perfect! Invitation to meeting has been sent. We will inform you via SMS and email about confirmation or rejection.";
+          that.emit(':tell', output);
         });
     },
     'AMAZON.NoIntent': function () {
@@ -286,7 +323,7 @@ var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, 
 
 exports.handler = function (event, context, callback) {
     alexa = Alexa.handler(event, context);
-    alexa.registerHandlers(newSessionHandlers, startGetUsersHandlers, notificationsHandlers, setDateTimeMeetingHandlers);
+    alexa.registerHandlers(newSessionHandlers, startGetUsersHandlers, notificationsHandlers, setDateTimeMeetingHandlers, acceptMeetingHandlers);
     alexa.execute();
 };
 
@@ -388,6 +425,24 @@ function getRestaurantsNearbyJSON(that) {
             key: 'AIzaSyAG7rci1mcpe_MPiatVAgPP9kk-VlIG6mc'
         },
         json: true
+    };
+
+    return rq(options);
+}
+
+function postSetMeetingJSON(that) {
+
+    var options = {
+      method: 'POST',
+      uri: "https://hidden-beach-26730.herokuapp.com/api/set_meeting",
+      body: {
+          invitor_id: that.attributes['current_user_id'],
+          invited_id: that.attributes['chosen_person_data'].id,
+          location: (that.attributes['restaurant'].name +", "+ that.attributes['restaurant'].vicinity),
+          date: that.attributes['date'],
+          time: that.attributes['time'],
+      },
+      json: true // Automatically stringifies the body to JSON
     };
 
     return rq(options);
