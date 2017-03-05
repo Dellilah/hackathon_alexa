@@ -29,7 +29,7 @@ var alexa;
 
 var newSessionHandlers = {
     'LaunchRequest': function () {
-        this.attributes['current_user_id'] = 1;
+        this.attributes['current_user_id'] = 4;
         this.attributes['discarded_ids'] = [];
         var that = this;
         getNotificationsJSON(this).then(function (response) {
@@ -139,7 +139,7 @@ var setDateTimeMeetingHandlers = Alexa.CreateStateHandler(states.CHOOSE_DATETIME
       getUsersDeadlineJSON(this).then(function (response) {
         if ( response.length > 0 ) {
           that.attributes['chosen_person_data'] = response[0].user;
-          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +", do you like my choice?";
+          var output = "I've found "+ that.attributes['chosen_person_data'].first_name +" who is expert in "+that.attributes['ability_name']+". "+that.attributes['chosen_person_data'].first_name+" can help in "+that.attributes['chosen_person_data'].good_at +". Is that the person that you're looking for?";
           that.emit(':ask', output);
         } else {
           that.emit(':tell', "I did't find any experts for this datetime.");
@@ -209,11 +209,11 @@ var acceptMeetingHandlers = Alexa.CreateStateHandler(states.ACCEPT_MEETING, {
           that.emit(':tell', output);
         });
     },
-    'AMAZON.NoIntent': function () {
-        this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
-        output = "If you want me to find another person with the same skill, say 'next'. If you want to change the skill - say 'change skill for' and the name of the skill.";
-        this.emit(':ask', output, output);
-    },
+    // 'AMAZON.NoIntent': function () {
+    //     this.attributes['discarded_ids'].push(this.attributes['chosen_person_data'].id);
+    //     output = "If you want me to find another person with the same skill, say 'next'. If you want to change the skill - say 'change skill for' and the name of the skill.";
+    //     this.emit(':ask', output, output);
+    // },
     'AMAZON.StopIntent': function () {
         this.emit(':tell', goodbyeMessage);
     },
@@ -241,7 +241,7 @@ var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, 
       var current_notification = this.attributes['unconfirmed_notifications'][this.attributes['current_notification']];
       if (current_notification) {
         this.attributes['current_notification'] = this.attributes['current_notification'] + 1;
-        var output = "Invitation from "+ current_notification.meeting.user.first_name + ". Confirm, reject, next invitation, or pass to looking for a lunch?";
+        var output = "Invitation from "+ current_notification.meeting.user.first_name + " who is looking for "+current_notification.meeting.user.looking_for +". Meeting took place in "+current_notification.meeting.location+" at "+ dateFormat(current_notification.meeting.when, "dddd, mmmm dS, yyyy, h:MM:ss TT") +". Confirm, reject, next invitation, or pass to looking for a lunch?";
         this.emit(':ask', output);
       } else {
         this.handler.state = states.CHOOSE_ABILITY;
@@ -251,8 +251,7 @@ var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, 
     },
     'AMAZON.YesIntent': function () {
         var current_notification = this.attributes['unconfirmed_notifications'][this.attributes['current_notification']];
-        this.attributes['current_notification'] = this.attributes['current_notification'] + 1;
-        var output = "Invitation from "+ current_notification.meeting.user.first_name + ". Confirm, reject, next invitation, or pass to looking for a lunch?";
+        var output = "Invitation from "+ current_notification.meeting.user.first_name + " who is looking for "+current_notification.meeting.user.looking_for +". Meeting took place in "+current_notification.meeting.location+" at "+ dateFormat(current_notification.meeting.when, "dddd, mmmm dS, yyyy, h:MM:ss TT")+". Confirm, reject, next invitation, or pass to looking for a lunch?";
         this.emit(':ask', output);
     },
     'passToSearch': function () {
@@ -265,14 +264,14 @@ var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, 
         postConfirmInvitaionJSON(this).then(function (response) {
           var output = "Meeting successfully confirmed.";
           that.attributes['current_notification'] = that.attributes['current_notification'] + 1;
-          if (that.attributes['unconfirmed_notifications'][that.attributes['current_notification']]) {
+          if (that.attributes['current_notification'] >= that.attributes['unconfirmed_notifications'].length) {
+            that.handler.state = states.CHOOSE_ABILITY;
+            output = output + "No more waiting invitations. You're looking for a person with what skill?";
+            that.emit(':ask', output);
+          } else {
             var current_notification = that.attributes['unconfirmed_notifications'][that.attributes['current_notification']];
             that.attributes['current_notification'] = that.attributes['current_notification'] + 1;
             output = output + "Invitation from "+ current_notification.meeting.user.first_name + ". Confirm, reject, next invitation, or pass to looking for a lunch?";
-            that.emit(':ask', output);
-          } else {
-            that.handler.state = states.CHOOSE_ABILITY;
-            output = output + "No more waiting invitations. You're looking for a person with what skill?";
             that.emit(':ask', output);
           }
         });
@@ -282,14 +281,14 @@ var notificationsHandlers = Alexa.CreateStateHandler(states.CHECK_NOTIFICATION, 
         postRejectInvitaionJSON(this).then(function (response) {
           var output = "Meeting successfully rejected.";
           that.attributes['current_notification'] = that.attributes['current_notification'] + 1;
-          if (that.attributes['unconfirmed_notifications'][that.attributes['current_notification']]) {
+          if (that.attributes['current_notification'] >= that.attributes['unconfirmed_notifications'].length) {
+            that.handler.state = states.CHOOSE_ABILITY;
+            output = output + "No more waiting invitations. You're looking for a person with what skill?";
+            that.emit(':ask', output);
+          } else {
             var current_notification = that.attributes['unconfirmed_notifications'][that.attributes['current_notification']];
             that.attributes['current_notification'] = that.attributes['current_notification'] + 1;
             output = output + "Invitation from "+ current_notification.meeting.user.first_name + ". Confirm, reject, next invitation, or pass to looking for a lunch?";
-            that.emit(':ask', output);
-          } else {
-            that.handler.state = states.CHOOSE_ABILITY;
-            output = output + "No more waiting invitations. You're looking for a person with what skill?";
             that.emit(':ask', output);
           }
         });
