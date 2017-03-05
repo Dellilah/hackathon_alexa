@@ -264,7 +264,7 @@ function postConfirmInvitaionJSON(that) {
       method: 'POST',
       uri: "https://hidden-beach-26730.herokuapp.com/api/confirm",
       body: {
-          meeting_id: that.attributes['current_notification']
+          meeting_id: that.attributes['unconfirmed_notifications'][that.attributes['current_notification']].meeting.id
       },
       json: true // Automatically stringifies the body to JSON
     };
@@ -278,7 +278,7 @@ function postRejectInvitaionJSON(that) {
       method: 'POST',
       uri: "https://hidden-beach-26730.herokuapp.com/api/reject",
       body: {
-          meeting_id: that.attributes['current_notification']
+          meeting_id: that.attributes['unconfirmed_notifications'][that.attributes['current_notification']].meeting.id
       },
       json: true // Automatically stringifies the body to JSON
     };
