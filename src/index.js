@@ -29,7 +29,7 @@ var alexa;
 
 var newSessionHandlers = {
     'LaunchRequest': function () {
-        this.attributes['current_user_id'] = 4;
+        this.attributes['current_user_id'] = 15;
         this.attributes['discarded_ids'] = [];
         var that = this;
         getNotificationsJSON(this).then(function (response) {
